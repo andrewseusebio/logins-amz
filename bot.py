@@ -1,3 +1,4 @@
+from flask import Flask, request
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -18,7 +19,7 @@ import os
 
 # ================= CONFIG =================
 
-TOKEN = "8227819693:AAGm7y4oN4CBotK2qQiRapegjIcIYmlIBLc"
+TOKEN = "8227819693:AAGm7y4oN4CBotK2qQiRapegjIcIYmlIBLc"  # Substitua pelo seu token do bot
 ESTOQUE_DIR = "estoque"
 RESERVA_DIR = "fila_reserva"
 ADMINS = [8276989322]
@@ -246,24 +247,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-# ================= COMANDO /bonus =================
-
-async def bonus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    
-    try:
-        global bonus_percentual, bonus_valor_minimo
-        bonus_percentual = float(context.args[0])
-        bonus_valor_minimo = float(context.args[1])
-
-        global bonus_ativo
-        bonus_ativo = True
-
-        await update.message.reply_text(f"🎁 Bônus ativo: {bonus_percentual}% para depósitos a partir de R$ {bonus_valor_minimo:.2f}")
-    except (IndexError, ValueError):
-        await update.message.reply_text("❌ Uso correto: /bonus <percentual> <valor_minimo>\nExemplo: /bonus 30 300")
-
 # ================= RECEBER VALOR =================
 
 async def receber_valor(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -286,6 +269,24 @@ async def receber_valor(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Valor inválido.")
         return
 
+# ================= COMANDO /bonus =================
+
+async def bonus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    
+    try:
+        global bonus_percentual, bonus_valor_minimo
+        bonus_percentual = float(context.args[0])
+        bonus_valor_minimo = float(context.args[1])
+
+        global bonus_ativo
+        bonus_ativo = True
+
+        await update.message.reply_text(f"🎁 Bônus ativo: {bonus_percentual}% para depósitos a partir de R$ {bonus_valor_minimo:.2f}")
+    except (IndexError, ValueError):
+        await update.message.reply_text("❌ Uso correto: /bonus <percentual> <valor_minimo>\nExemplo: /bonus 30 300")
+
 # ================= COMANDOS ADMIN =================
 
 async def add_estoque(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -295,7 +296,6 @@ async def add_estoque(update: Update, context: ContextTypes.DEFAULT_TYPE):
         produto = context.args[0]
         login, imgs = context.args[1].split("/")
         imagens = imgs.split(",")
-
         with open(f"{ESTOQUE_DIR}/{produto}.txt", "a", encoding="utf-8") as f:
             f.write("||".join([login] + imagens) + "\n")
 
@@ -306,20 +306,32 @@ async def add_estoque(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         await update.message.reply_text("❌ Uso correto:\n/add_estoque produto login:senha/url1,url2")
 
-# ================= MAIN =================
+# ================= FLASK CONFIG =================
+
+app = Flask(__name__)
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = Update.de_json(json_str, bot)
+    bot.dispatcher.process_update(update)
+    return 'OK'
 
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    global bot
+    bot = ApplicationBuilder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start_menu))
-    app.add_handler(CommandHandler("add_estoque", add_estoque))
-    app.add_handler(CommandHandler("bonus", bonus_cmd))
+    bot.add_handler(CommandHandler("start", start_menu))
+    bot.add_handler(CommandHandler("add_estoque", add_estoque))
+    bot.add_handler(CommandHandler("bonus", bonus_cmd))
 
-    app.add_handler(CallbackQueryHandler(callback_handler))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), receber_valor))
+    bot.add_handler(CallbackQueryHandler(callback_handler))
+    bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), receber_valor))
 
-    print("🤖 Bot rodando...")
-    app.run_polling()
+    # Definir webhook do Telegram
+    bot.set_webhook(url="https://logins-9u070tskf-andrewseusebios-projects.vercel.app/")  # Substitua pelo seu domínio
+
+    app.run(debug=True, host="0.0.0.0", port=5000)  # Flask rodando no Vercel
 
 if __name__ == "__main__":
     main()
