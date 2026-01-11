@@ -2,8 +2,8 @@
   "version": 2,
   "routes": [
     {
-      "src": "/webhook",
-      "dest": "/main.py"
+      "src": "/",
+      "dest": "/simple_flask.py"
     }
   ]
 }
