@@ -329,7 +329,7 @@ def main():
     bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), receber_valor))
 
     # Definir webhook do Telegram
-    bot.set_webhook(url="https://logins-amz-6i3i-git-main-andrewseusebios-projects.vercel.app/")  # Substitua pelo seu domínio
+    bot.set_webhook(url="https://logins-amz.vercel.app/")  # Substitua pelo seu domínio
 
     app.run(debug=True, host="0.0.0.0", port=5000)  # Flask rodando no Vercel
 
